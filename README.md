@@ -15,8 +15,7 @@ visualizes the dependencies between all SlackBuilds scripts using a D3.js force-
 `git clone https://github.com/rizitis/SlackBuilds.org_Dependencies_Graph.git` <br>
 `cd SlackBuilds.org_Dependencies_Graph` <br>
 `npm init -y` <br>
-`npm install express` <br>
-`npm install axios`<br>
+`npm install express axios` <br>
 
 #### Run server
 `node server.js`<br>
