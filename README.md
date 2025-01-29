@@ -21,4 +21,8 @@ visualizes the dependencies between all SlackBuilds scripts using a D3.js force-
 #### Run server
 `node server.js`<br>
 
-Open your browser `http://localhost:3000`
+Open your browser `http://localhost:3000` <br>
+
+To kill server Ctrl+C 
+
+
