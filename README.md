@@ -25,4 +25,7 @@ Open your browser `http://localhost:3000` <br>
 
 To kill server Ctrl+C 
 
+#### Required
+`slpkg to be installed, focus to ponce repo and updated`
+
 
