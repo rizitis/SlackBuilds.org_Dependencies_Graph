@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slackware Dependencies Graph</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; }
+        h2 { text-align: center; }
+        .search-container { text-align: center; margin-bottom: 20px; }
+        .search-container input { padding: 10px; width: 300px; font-size: 16px; }
+        svg { width: 100%; height: 800px; border: 1px solid black; }
+        .node circle { fill: steelblue; stroke: #fff; stroke-width: 2px; cursor: pointer; }
+        .node text { font-size: 12px; pointer-events: none; }
+        .link { stroke: #999; stroke-opacity: 0.6; stroke-width: 1.5px; }
+        .link.focused { stroke: #ff6600; stroke-width: 3px; }
+        .node.focused circle { fill: orange; stroke: #fff; stroke-width: 3px; }
+        .node.highlighted circle { fill: lightblue; stroke: #fff; stroke-width: 2px; }
+    </style>
+</head>
+<body>
+    <h2>Slackware Dependencies Graph</h2>
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search for a node..." />
+    </div>
+    <svg></svg>
+
+    <script>
+        fetch('/data')  // Fetch the data from the server
+            .then(response => response.json())
+            .then(rawData => {
+                console.log("Data loaded:", rawData);
+
+                const jsonData = {
+                    "nodes": [],
+                    "links": []
+                };
+
+                // Prepare nodes and links
+                Object.keys(rawData).forEach(pkg => {
+                    jsonData.nodes.push({ id: pkg });
+                    rawData[pkg].requires.forEach(dep => {
+                        jsonData.nodes.push({ id: dep });
+                        jsonData.links.push({ source: pkg, target: dep });
+                    });
+                });
+
+                jsonData.nodes = Array.from(new Set(jsonData.nodes.map(d => d.id))).map(id => ({ id }));
+
+                console.log("Processed nodes:", jsonData.nodes);
+                console.log("Links:", jsonData.links);
+
+                const width = window.innerWidth, height = 800;
+                const svg = d3.select("svg")
+                    .attr("width", width)
+                    .attr("height", height);
+
+                // Create a group element to hold the graph
+                const graphGroup = svg.append("g");
+
+                // Zoom behavior
+                const zoom = d3.zoom().on("zoom", (event) => {
+                    graphGroup.attr("transform", event.transform); // Apply zoom to the graph group
+                }).scaleExtent([0.1, 4]);  // Zoom limits
+
+                svg.call(zoom);
+
+                // Set up the simulation with basic force layout
+                const simulation = d3.forceSimulation(jsonData.nodes)
+                    .force("link", d3.forceLink(jsonData.links).id(d => d.id).distance(150))
+                    .force("charge", d3.forceManyBody().strength(-400))  // Avoid nodes being too close
+                    .force("center", d3.forceCenter(width / 2, height / 2))
+                    .on("tick", ticked); // Update positions on each tick
+
+                const link = graphGroup.append("g")
+                    .selectAll("line")
+                    .data(jsonData.links)
+                    .enter().append("line")
+                    .attr("class", "link");
+
+                const node = graphGroup.append("g")
+                    .selectAll("g")
+                    .data(jsonData.nodes)
+                    .enter().append("g")
+                    .attr("class", "node");
+
+                node.append("circle")
+                    .attr("r", 10)
+                    .call(d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended))
+                    .on("click", handleNodeClick);  // Click event handler
+
+                node.append("text")
+                    .attr("dx", 12)
+                    .attr("dy", ".35em")
+                    .text(d => d.id);
+
+                // Function to update positions of nodes and links
+                function ticked() {
+                    link.attr("x1", d => d.source.x)
+                        .attr("y1", d => d.source.y)
+                        .attr("x2", d => d.target.x)
+                        .attr("y2", d => d.target.y);
+
+                    node.attr("transform", d => `translate(${d.x},${d.y})`);
+                }
+
+                // Dragging behavior
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+
+                // Handle node click (focus on node and its connected nodes)
+                function handleNodeClick(event, clickedNode) {
+                    // Clear previous highlights
+                    d3.selectAll(".node").classed("highlighted", false);
+                    d3.selectAll(".link").classed("focused", false);
+
+                    // Highlight the clicked node
+                    d3.select(this).classed("focused", true);
+
+                    // Highlight connected nodes
+                    const connectedNodes = jsonData.links
+                        .filter(link => link.source.id === clickedNode.id || link.target.id === clickedNode.id)
+                        .map(link => link.source.id === clickedNode.id ? link.target : link.source);
+
+                    connectedNodes.forEach(node => {
+                        d3.selectAll(".node")
+                            .filter(d => d.id === node.id)
+                            .classed("highlighted", true);
+                    });
+
+                    // Highlight the links between clicked node and connected nodes
+                    jsonData.links.forEach(link => {
+                        if (link.source.id === clickedNode.id || link.target.id === clickedNode.id) {
+                            d3.selectAll(".link")
+                                .filter(d => (d.source.id === clickedNode.id && d.target.id === link.target.id) ||
+                                             (d.source.id === clickedNode.id && d.target.id === link.source.id))
+                                .classed("focused", true);
+                        }
+                    });
+
+                    // Stop the simulation (nodes should stop moving)
+                    simulation.alpha(0).restart();
+                }
+
+                // Search for a node and center it (highlight and focus)
+                const searchInput = document.getElementById("searchInput");
+                searchInput.addEventListener("keypress", function(event) {
+                    if (event.key === "Enter") {  // Check for Enter key press
+                        const searchTerm = searchInput.value.toLowerCase().trim();
+                        const nodeToCenter = jsonData.nodes.find(d => d.id.toLowerCase() === searchTerm);
+
+                        if (nodeToCenter) {
+                            // Stop the simulation before adjusting the layout
+                            simulation.alpha(0).restart();
+
+                            // Clear previous highlights
+                            d3.selectAll(".node").classed("highlighted", false);
+                            d3.selectAll(".link").classed("focused", false);
+
+                            // Focus on the found node
+                            handleNodeClick(null, nodeToCenter);
+
+                            // Highlight the node and its connections in orange
+                            d3.selectAll(".node")
+                                .filter(d => d.id === nodeToCenter.id)
+                                .classed("focused", true);
+
+                            const connectedNodes = jsonData.links
+                                .filter(link => link.source.id === nodeToCenter.id || link.target.id === nodeToCenter.id)
+                                .map(link => link.source.id === nodeToCenter.id ? link.target : link.source);
+
+                            connectedNodes.forEach(node => {
+                                d3.selectAll(".node")
+                                    .filter(d => d.id === node.id)
+                                    .classed("focused", true);
+                            });
+
+                            // Zoom and pan to center the node
+                            svg.transition().duration(750).call(
+                                zoom.transform,
+                                d3.zoomIdentity.translate(width / 2 - nodeToCenter.x, height / 2 - nodeToCenter.y).scale(2)
+                            );
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                console.error('Error loading data:', err);
+            });
+    </script>
+</body>
+</html>
