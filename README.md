@@ -38,7 +38,7 @@ In there every package has its own .png with all deps, example:<br>
 
 [Here](https://github.com/rizitis/SlackBuilds.org_Dependencies_Graph/raw/refs/heads/main/dependency_graphs.tar.gz) is the folder compressed. *(ponce repo 07/02/2025)*
 
-- You can also edit show-deps script to correct your DIR PATH (dependency_graphs) and cmd: `bash <pkg_name>` 
+- You can also edit show-deps script to correct your DIR PATH (dependency_graphs) and cmd: `bash show-deps <pkg_name>` 
 
 Again requires `slpkg to be installed, focus to ponce repo and updated`
 
