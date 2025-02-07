@@ -28,3 +28,15 @@ To kill server Ctrl+C
 `slpkg to be installed, focus to ponce repo and updated`
 
 
+---
+
+**Alternative** 
+<br>if you preffer graphviz just run `python3 python-graph.py`<br>
+Output will be a folder: *dependency_graphs* <br>
+In there every package has its own .png with all deps, example:<br>
+![python3-py7zr](./python3-py7zr_dependencies.png)
+
+[Here](https://github.com/rizitis/SlackBuilds.org_Dependencies_Graph/raw/refs/heads/main/dependency_graphs.tar.gz) is the folder compressed. *(ponce repo 07/02/2025)*
+
+
+
