@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# ADD YOUR DIR PATH
+_DIRPATH="$HOME"/dependency_graphs
+
+xdg-open "$_DIRPATH"/"$1"_dependencies.png
